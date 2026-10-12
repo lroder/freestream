@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "freestream"
+version = "1.0.0"
+description = "A partitioned, sealed event stream server for free-threaded Python, and the transport interface products reach it through"
+readme = "README.md"
+requires-python = ">=3.12"
+# The one third-party import: AES-256-GCM, for sealing what the server writes. Any release from 46 on: the
+# server's own free-threaded interpreter needs a cp314t wheel (50 has one), and a product's interpreter may
+# hold an older one for its own reasons (bosstax-web's API pins 46).
+dependencies = ["cryptography>=46"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-cov>=6.0", "ruff>=0.9", "mypy>=1.13"]
+
+[tool.setuptools]
+packages = ["freestream", "freestream.interface"]
+
+[tool.setuptools.package-data]
+freestream = ["console.html"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# System tests measure the machine they run on (a real server under load from several processes), so the
+# unit suite leaves them out. Run them on a target server: pytest -m system
+markers = ["system: loads a real server and measures the machine; run with `pytest -m system`"]
+addopts = "-m 'not system'"
+filterwarnings = ["error", "ignore::ResourceWarning", "ignore::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+no_implicit_optional = true
+disallow_untyped_defs = true

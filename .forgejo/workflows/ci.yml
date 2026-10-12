@@ -1,0 +1,52 @@
+name: CI
+
+# A pull request into main or a release branch, and those branches themselves. A newer push to the same PR
+# cancels the run still going.
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+  pull_request:
+    branches:
+      - main
+      - "release/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install
+        run: |
+          set -euo pipefail
+          pip install uv
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[test]"
+
+      - name: Lint — ruff
+        run: .venv/bin/ruff check freestream tests
+
+      - name: Type-check — mypy
+        run: .venv/bin/mypy freestream
+
+      - name: Tests (unit, with the 80% coverage floor)
+        run: .venv/bin/python -m pytest --cov=freestream --cov-fail-under=80 -q
+
+      # The server runs on free-threaded Python 3.14t, and it must be fully multithreaded: the GIL stays off
+      # after every import, and the system test measures more CPU seconds than wall seconds under load. It
+      # fails, never skips, on a runner without 3.14t, because a skipped check is the unchecked requirement
+      # this step exists to end.
+      - name: Free-threaded server (Python 3.14t)
+        run: |
+          set -euo pipefail
+          uv venv --python 3.14t .venv-3.14t
+          uv pip install --python .venv-3.14t/bin/python -e .
+          .venv-3.14t/bin/python -c \
+            "import sys, freestream.server, freestream.__main__; assert not sys._is_gil_enabled(), 'GIL is on'"
+          .venv/bin/python -m pytest -q -m system tests/test_eventstream_multithreaded.py

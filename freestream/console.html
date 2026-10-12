@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event stream</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  --ink: #1d2433; --ink-soft: #5b6477; --ink-faint: #8a92a3;
+  --paper: #f6f7f9; --card: #ffffff; --rule: #e3e6ec;
+  --ready: #1f8a70; --ready-soft: #e3f3ee;
+  --attention: #b7791f; --attention-soft: #fbf1df;
+  --out: #6b5bb5; --out-soft: #eeebf8;
+  --lag: #2f6fb3; --lag-soft: #e4eef9;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6e9ef; --ink-soft: #a7afbf; --ink-faint: #737c8f;
+    --paper: #12151c; --card: #1a1f29; --rule: #2a303d;
+    --ready: #4cc3a0; --ready-soft: #16302a;
+    --attention: #e0a84a; --attention-soft: #33291a;
+    --out: #a597f0; --out-soft: #262240;
+    --lag: #6aa5e8; --lag-soft: #182a40;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 var(--sans); }
+main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+.facts { color: var(--ink-soft); font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; }
+.facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-faint); margin-left: auto; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+.live.on i { background: var(--ready); box-shadow: 0 0 0 3px var(--ready-soft); }
+.attention { background: var(--attention-soft); border: 1px solid color-mix(in srgb, var(--attention) 35%, transparent);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; animation: bloom .35s ease-out; }
+.attention li { margin: 3px 0; }
+.attention ul { margin: 0; padding-left: 18px; }
+.attention strong { color: var(--attention); }
+@keyframes bloom { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.bar { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 8px; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin: 0; font-weight: 600; }
+.topic { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+.topic-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.topic-name { font: 600 15px var(--mono); }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 8px; border-radius: 999px;
+  background: var(--lag-soft); color: var(--lag); }
+.chip svg { width: 12px; height: 12px; }
+.nums { color: var(--ink-soft); font-size: 12.5px; display: flex; gap: 14px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.nums b { color: var(--ink); font-weight: 600; }
+.dead-link { background: none; border: 0; padding: 0; font: inherit; color: var(--attention); cursor: pointer; text-decoration: underline dotted; }
+.group { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
+.group-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.group-name { font-family: var(--mono); font-weight: 600; }
+.ready-count { font-variant-numeric: tabular-nums; }
+.ready-count.none { color: var(--attention); font-weight: 600; }
+.strip { display: flex; gap: 2px; align-items: flex-end; height: 18px; flex: 1; min-width: 120px; max-width: 420px; }
+.strip i { flex: 1; background: var(--rule); border-radius: 2px; min-height: 2px; transition: height .4s ease; }
+.strip i.lagging { background: var(--lag); }
+.lag { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 12.5px; }
+table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12.5px; }
+td { padding: 5px 6px; border-top: 1px solid var(--rule); vertical-align: middle; }
+td.mono { font-family: var(--mono); }
+.doing { display: inline-flex; align-items: center; gap: 6px; }
+.doing i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); }
+.doing.working i { background: var(--ready); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.state { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; }
+.state.ready { background: var(--ready-soft); color: var(--ready); }
+.state.drain, .state.maint { background: var(--out-soft); color: var(--out); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; opacity: .35; transition: opacity .15s; }
+tr:hover .seg, .seg:focus-within { opacity: 1; }
+.seg button { border: 0; background: transparent; color: var(--ink-soft); font: 11.5px var(--sans); padding: 3px 8px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button.on { background: var(--ink); color: var(--card); }
+.quiet { color: var(--ink-faint); font-size: 12.5px; }
+button.ghost { border: 1px solid var(--rule); background: var(--card); color: var(--ink); border-radius: 8px; padding: 5px 11px; font: 12.5px var(--sans); cursor: pointer; }
+button.ghost:hover { border-color: var(--ink-faint); }
+button.ghost.armed { border-color: var(--attention); color: var(--attention); }
+form.new-topic { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: var(--card); border: 1px solid var(--rule);
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; animation: bloom .3s ease-out; }
+form.new-topic input, form.new-topic select { font: 13px var(--sans); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 7px;
+  background: var(--paper); color: var(--ink); }
+form.new-topic input[name=name] { font-family: var(--mono); width: 220px; }
+form.new-topic input[name=partitions] { width: 80px; }
+.note { font-size: 12.5px; color: var(--attention); }
+.dead-panel { margin-top: 10px; background: var(--attention-soft); border-radius: 9px; padding: 8px 12px; animation: bloom .3s ease-out; }
+.empty { color: var(--ink-faint); padding: 24px 0; text-align: center; }
+.said { font-size: 12.5px; color: var(--attention); min-height: 18px; margin: -10px 0 8px; transition: opacity .6s; }
+.others { margin-top: 8px; width: auto; }
+.others td { padding-right: 22px; }
+.flock { display: inline-flex; gap: 3px; align-items: center; background: none; border: 0; padding: 2px 4px; cursor: pointer;
+  border-radius: 6px; color: var(--ink-soft); font: 12.5px var(--sans); }
+.flock:hover { background: var(--paper); }
+.flock i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+.flock i.working { background: var(--ready); }
+.flock i.out { background: var(--out); }
+.flock span { margin-left: 6px; }
+.label { color: var(--ink-faint); }
+.topic .hover-only, .group .hover-only { visibility: hidden; }
+.topic:hover > .topic-head .hover-only, .group:hover .hover-only, .hover-only.armed { visibility: visible; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Event stream</h1>
+    <div class="facts" id="facts"></div>
+    <span class="live" id="live"><i></i><span>connecting</span></span>
+  </header>
+  <div class="said" id="said" aria-live="polite"></div>
+  <div id="attention"></div>
+  <div class="bar"><h2>Topics</h2><button class="ghost" id="add-topic">New topic</button></div>
+  <div id="new-topic"></div>
+  <div id="topics"></div>
+  <div class="bar"><h2>Other connections</h2></div>
+  <div id="others"></div>
+</main>
+<script>
+"use strict";
+const HEADER = {"Content-Type": "application/json", "X-Eventstream-Console": "1"};
+const GLYPH = {
+  competing: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 6h4M5 6l3-3.5M5 6l3 0M5 6l3 3.5"/><circle cx="10" cy="2.5" r="1"/><circle cx="10" cy="6" r="1"/><circle cx="10" cy="9.5" r="1"/></svg>',
+  keyed: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="3.5" cy="6" r="2.2"/><path d="M5.7 6H11M9 6v2M11 6v1.5"/></svg>',
+  broadcast: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="1.2"/><path d="M3.2 3.2a4 4 0 0 0 0 5.6M8.8 3.2a4 4 0 0 1 0 5.6"/></svg>',
+};
+let state = null, receivedAt = 0, openDead = null, armed = null, composing = false;
+// Groups a person opened by hand. A healthy group reads as one line; one with a member out opens itself.
+const opened = new Set();
+const FLOCK_AT = 4;
+
+function say(message) {
+  const line = document.getElementById("said");
+  line.textContent = message; line.style.opacity = 1;
+  clearTimeout(say.fading); say.fading = setTimeout(() => { line.style.opacity = 0; }, 6000);
+}
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"})[c]);
+}
+function plural(n, one, many) { return `${n} ${n === 1 ? one : (many || one + "s")}`; }
+function bytes(n) {
+  if (n < 1024) return n + " B";
+  for (const unit of ["KB", "MB", "GB"]) { n /= 1024; if (n < 1024 || unit === "GB") return n.toFixed(1) + " " + unit; }
+}
+function ago(seconds) {
+  seconds = Math.max(0, seconds + (Date.now() - receivedAt) / 1000);
+  if (seconds < 90) return Math.round(seconds) + "s";
+  if (seconds < 5400) return Math.round(seconds / 60) + "m";
+  return (seconds / 3600).toFixed(1) + "h";
+}
+async function change(method, path, body) {
+  const answer = await fetch(path, {method, headers: HEADER, body: body ? JSON.stringify(body) : undefined});
+  const fields = await answer.json().catch(() => ({}));
+  if (!answer.ok) throw new Error(fields.error || answer.statusText);
+  return fields;
+}
+
+function attention() {
+  const notes = [];
+  for (const group of state.groups) {
+    if (group.members > 0 && group.ready === 0)
+      notes.push(`<strong>${esc(group.channel)} · ${esc(group.group)}</strong> has no ready member — nothing new on it is being handled.`);
+  }
+  for (const topic of state.topics) {
+    if (topic.dead > 0) notes.push(`<strong>${esc(topic.name)}</strong> has ${topic.dead} dead letter${topic.dead === 1 ? "" : "s"}.`);
+  }
+  for (const seen of state.consumers) {
+    if (seen.state !== "ready") notes.push(`Consumer <strong>${seen.id}</strong> (${esc(seen.role)}, pid ${esc(seen.pid)}) is in <strong>${esc(seen.state)}</strong>.`);
+  }
+  return notes.length ? `<div class="attention"><ul>${notes.map(n => `<li>${n}</li>`).join("")}</ul></div>` : "";
+}
+
+function consumerRow(seen, held) {
+  const segs = state.states.map(s => `<button data-consumer="${seen.id}" data-state="${s}" class="${seen.state === s ? "on" : ""}">${s}</button>`).join("");
+  return `<tr>
+    <td class="mono">${seen.id}</td>
+    <td>${esc(seen.role)}${seen.name ? ` <span class="quiet">${esc(seen.name)}</span>` : ""}</td>
+    <td class="mono">${esc(seen.pid ?? "–")}</td>
+    <td><span class="doing ${held.doing}"><i></i>${held.doing}</span></td>
+    <td>${held.partitions.length ? `<span class="label">holds</span> <span class="mono">${held.partitions.join(", ")}</span>` : `<span class="label">holds nothing</span>`}</td>
+    <td>${held.open_keys ? plural(held.open_keys, "key") + " open" : ""}</td>
+    <td class="quiet"><span class="label">seen</span> <span data-ago="${seen.seen_seconds_ago}">${ago(seen.seen_seconds_ago)}</span> <span class="label">ago</span></td>
+    <td><span class="state ${esc(seen.state)}">${esc(seen.state)}</span></td>
+    <td style="text-align:right"><span class="seg">${segs}</span></td></tr>`;
+}
+
+function groupBlock(group) {
+  const pairs = state.consumers.flatMap(seen => seen.memberships
+    .filter(held => held.channel === group.channel && held.group === group.group).map(held => [seen, held]));
+  const members = pairs.map(([seen, held]) => consumerRow(seen, held));
+  const lags = Object.values(group.lag_by_partition);
+  const top = Math.max(1, ...lags);
+  const strip = lags.map(n => `<i class="${n ? "lagging" : ""}" style="height:${n ? 4 + 14 * n / top : 2}px" title="${n} waiting"></i>`).join("");
+  const key = `${group.channel}/${group.group}`;
+  const retire = group.members === 0
+    ? `<button class="ghost hover-only ${armed === "group:" + key ? "armed" : ""}" data-retire-group="${esc(key)}">${armed === "group:" + key ? "Delete for good" : "Retire group"}</button>` : "";
+  const anyOut = pairs.some(([seen]) => seen.state !== "ready");
+  const flocked = pairs.length > FLOCK_AT && !anyOut && !opened.has(key);
+  const working = pairs.filter(([, held]) => held.doing === "working").length;
+  const flock = `<button class="flock" data-flock="${esc(key)}" title="${flocked ? "Show each member" : "Fold them up"}">${
+    pairs.map(([seen, held]) => `<i class="${seen.state !== "ready" ? "out" : held.doing}"></i>`).join("")}<span>${
+    working ? `${working} working` : "all waiting"}</span></button>`;
+  return `<div class="group">
+    <div class="group-head"><span class="group-name">${esc(group.group)}</span>
+      <span class="ready-count ${group.members && !group.ready ? "none" : ""}">${group.ready} of ${group.members} ready</span>
+      <span class="strip">${strip}</span>
+      <span class="lag">${group.lag ? group.lag + " waiting" : "caught up"}</span>${retire}</div>
+    ${!members.length ? `<div class="quiet" style="margin-top:6px">No one connected.</div>`
+      : pairs.length > FLOCK_AT && !anyOut ? `<div style="margin-top:6px">${flock}</div>${flocked ? "" : `<table>${members.join("")}</table>`}`
+      : `<table>${members.join("")}</table>`}</div>`;
+}
+
+function topicCard(topic) {
+  const groups = state.groups.filter(group => group.channel === topic.name);
+  const dead = topic.dead
+    ? `<span><button class="dead-link" data-dead="${esc(topic.name)}">${topic.dead} dead</button></span>` : "";
+  const idle = !state.consumers.some(seen => seen.memberships.some(held => held.channel === topic.name));
+  const remove = idle
+    ? `<button class="ghost hover-only ${armed === "topic:" + topic.name ? "armed" : ""}" data-remove-topic="${esc(topic.name)}">${armed === "topic:" + topic.name ? "Remove and delete its records" : "Remove"}</button>` : "";
+  return `<section class="topic">
+    <div class="topic-head"><span class="topic-name">${esc(topic.name)}</span>
+      <span class="chip">${GLYPH[topic.delivery] || ""}${esc(topic.delivery)}</span>
+      <span class="nums"><span><b>${topic.partitions}</b> ${topic.partitions === 1 ? "partition" : "partitions"}</span><span><b>${topic.records}</b> ${topic.records === 1 ? "record" : "records"}</span>
+        <span><b>${bytes(topic.bytes)}</b></span>${dead}</span>${remove}</div>
+    ${openDead && openDead.topic === topic.name ? deadPanel() : ""}
+    ${groups.length ? groups.map(groupBlock).join("") : `<div class="quiet" style="margin-top:8px">No group reads this yet.</div>`}</section>`;
+}
+
+function deadPanel() {
+  if (!openDead.letters) return `<div class="dead-panel quiet">Reading…</div>`;
+  const rows = openDead.letters.letters.map(letter => `<tr><td class="mono">offset ${esc(letter.offset)}</td><td>${esc(letter.attempts)} attempts</td>
+    <td>${esc(letter.group)}</td><td class="mono">${esc(Object.entries(letter.headers).map(([name, value]) => `${name}=${value}`).join(" ") || "–")}</td></tr>`).join("");
+  return `<div class="dead-panel"><table>${rows}</table>${openDead.letters.total > openDead.letters.letters.length
+    ? `<div class="quiet">…and ${openDead.letters.total - openDead.letters.letters.length} older</div>` : ""}</div>`;
+}
+
+function render() {
+  if (!state) return;
+  const info = state.info;
+  document.getElementById("facts").innerHTML =
+    `<span>up <b data-ago-up="${info.uptime_seconds}">${ago(info.uptime_seconds)}</b></span><span><b>${esc(info.python)}</b></span>
+     <span><b>${info.connections}</b> connections</span><span><b>${bytes(info.bytes_held)}</b> held</span>`;
+  document.getElementById("attention").innerHTML = attention();
+  const shown = state.topics.filter(topic => !topic.name.endsWith(".dead"));
+  document.getElementById("topics").innerHTML = shown.length ? shown.map(topicCard).join("")
+    : `<div class="empty">No topics yet. Deploy defines the ones the code declares, or add one here.</div>`;
+  const loose = state.consumers.filter(seen => !seen.memberships.length);
+  document.getElementById("others").innerHTML = loose.length
+    ? `<table class="others">${loose.map(seen => `<tr><td class="mono">${seen.id}</td><td>${esc(seen.role)}</td><td class="mono">${esc(seen.pid ?? "–")}</td>
+        <td class="quiet">${plural(seen.requests, "request")}</td><td class="quiet"><span class="label">seen</span> <span data-ago="${seen.seen_seconds_ago}">${ago(seen.seen_seconds_ago)}</span> <span class="label">ago</span></td></tr>`).join("")}</table>`
+    : `<div class="quiet">None.</div>`;
+}
+
+function renderNewTopic(note) {
+  const holder = document.getElementById("new-topic");
+  if (!composing) { holder.innerHTML = ""; return; }
+  holder.innerHTML = `<form class="new-topic" id="topic-form">
+    <input name="name" placeholder="document.bakes" required autocomplete="off" pattern="[a-z0-9][a-z0-9_.\\-]*">
+    <input name="partitions" type="number" min="1" max="1024" value="8" required>
+    <select name="delivery"><option value="competing">competing — any consumer, any record</option>
+      <option value="keyed">keyed — one key, one consumer</option><option value="broadcast">broadcast — every group sees all</option></select>
+    <button class="ghost" type="submit">Define</button><button class="ghost" type="button" id="cancel-topic">Cancel</button>
+    ${note ? `<span class="note">${esc(note)}</span>` : ""}</form>`;
+  holder.querySelector("input[name=name]").focus();
+}
+
+document.addEventListener("click", async event => {
+  const target = event.target.closest("button");
+  if (!target) return;
+  try {
+    if (target.id === "add-topic") { composing = !composing; renderNewTopic(); }
+    else if (target.dataset.flock) {
+      opened.has(target.dataset.flock) ? opened.delete(target.dataset.flock) : opened.add(target.dataset.flock); render();
+    }
+    else if (target.id === "cancel-topic") { composing = false; renderNewTopic(); }
+    else if (target.dataset.state) await change("POST", `/api/consumers/${target.dataset.consumer}/state`, {state: target.dataset.state});
+    else if (target.dataset.dead) {
+      if (openDead && openDead.topic === target.dataset.dead) { openDead = null; render(); return; }
+      openDead = {topic: target.dataset.dead}; render();
+      openDead.letters = await (await fetch(`/api/dead?topic=${encodeURIComponent(target.dataset.dead)}`)).json(); render();
+    }
+    else if (target.dataset.removeTopic || target.dataset.retireGroup) {
+      const key = target.dataset.removeTopic ? "topic:" + target.dataset.removeTopic : "group:" + target.dataset.retireGroup;
+      if (armed !== key) { armed = key; render(); setTimeout(() => { if (armed === key) { armed = null; render(); } }, 4000); return; }
+      armed = null;
+      if (target.dataset.removeTopic) await change("DELETE", `/api/topics/${encodeURIComponent(target.dataset.removeTopic)}`);
+      else { const [topic, group] = target.dataset.retireGroup.split("/");
+        await change("DELETE", `/api/groups/${encodeURIComponent(topic)}/${encodeURIComponent(group)}`); }
+    }
+  } catch (error) { say(error.message); }
+});
+
+document.addEventListener("submit", async event => {
+  if (event.target.id !== "topic-form") return;
+  event.preventDefault();
+  const form = new FormData(event.target);
+  try {
+    await change("POST", "/api/topics", {name: form.get("name"), partitions: Number(form.get("partitions")), delivery: form.get("delivery")});
+    composing = false; renderNewTopic();
+  } catch (error) { renderNewTopic(error.message); }
+});
+
+setInterval(() => {
+  for (const cell of document.querySelectorAll("[data-ago]")) cell.textContent = ago(Number(cell.dataset.ago));
+  const up = document.querySelector("[data-ago-up]");
+  if (up) up.textContent = ago(Number(up.dataset.agoUp));
+}, 1000);
+
+function listen() {
+  const live = document.getElementById("live");
+  const stream = new EventSource("/events");
+  stream.onopen = () => { live.className = "live on"; live.lastChild.textContent = "live"; };
+  stream.onmessage = message => { state = JSON.parse(message.data); receivedAt = Date.now(); render(); };
+  stream.onerror = () => { live.className = "live"; live.lastChild.textContent = "reconnecting"; };
+}
+listen();
+</script>
+</body>
+</html>
