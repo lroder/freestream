@@ -22,6 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The runner runs jobs on its host, whose own Python is the distribution's and refuses `pip install`
+      # (PEP 668); setup-python gives the job an interpreter of its own to install uv into.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install
         run: |
           set -euo pipefail
