@@ -211,17 +211,27 @@ async def test_past_its_attempts_a_record_is_dead_lettered_and_closed_out(stream
     transport = FreeStreamTransport(FreeStreamClient(stream))
     transport.register(DELIVERIES, group="deliverers", handler=deliver, on_exhausted=give_up,
                        max_attempts=3, delayed_retry=True)
+    inspector, dead_letters = FreeStreamClient(stream), []
+
+    async def dead_lettered():
+        # The hop closes the record out before the COMPLETE that writes the dead letter, so the test
+        # waits for the dead letter itself rather than reading it the moment `closed` fills.
+        handed = await inspector.next("webhooks.deliveries.dead", "inspector", wait=False)
+        if handed is not None:
+            dead_letters.append(handed[1])
+        return dead_letters
+
     stop, running = await _running(transport)
     try:
         await transport.produce(DELIVERIES, value=b"never lands", key="endpoint-9")
         await eventually(lambda: closed, "the record was never given up on")
+        await eventually(dead_lettered, "the record was never dead-lettered")
     finally:
         await _ended(stop, running, transport)
+        await inspector.close()
     assert starts == [b"never lands"] * 3
     assert closed == [(b"never lands", b"endpoint-9", 3)]
-    inspector = FreeStreamClient(stream)
-    _partition, dead = await inspector.next("webhooks.deliveries.dead", "inspector", wait=False)
-    await inspector.close()
+    [dead] = dead_letters
     assert (dead.value, dead.headers["dead.key"], dead.headers["dead.attempts"]) == (
         b"never lands", "endpoint-9", "3")
     assert not any(name.startswith("retry.") for name in dead.headers)
