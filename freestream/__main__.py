@@ -6,8 +6,8 @@
 ★ ITS OWN INTERPRETER, AND THAT IS THE POINT (2026-09-22). Everything this module imports, all
 the way down, is one of our own modules, the standard library, or `cryptography` — which seals what the
 server writes and ships a free-threaded wheel — so it runs on free-threaded Python (3.14t) even where the
-product around it cannot: in bosstax-web, where FreeStream was built, pymupdf re-enables the GIL on import,
-so the API and the OCR workers keep the lock and the server is the one component nothing blocks.
+product around it cannot: where FreeStream was built, a PDF library re-enables the GIL on import, so the
+API and the OCR workers keep the lock and the server is the one component nothing blocks.
 
 ★ AND THE SERVER USES IT: it is fully multithreaded (2026-09-25), running its work on strands, one
 thread each with its own loop, each owning a share of the partitions (`strand.py`). It ran on 3.14t for
@@ -62,9 +62,9 @@ def runs_free_threaded() -> bool:
     return bool(sysconfig.get_config_var("Py_GIL_DISABLED")) and not gil_enabled()
 
 
-#: The variable that sets the strand count: backend/.env in development (`tools/dev.sh`), and the unit's
-#: drop-in in production, which deploy.sh writes from backend/.env. The server reads this one variable
-#: and never the .env itself, which holds the database URLs and the app secret it has no use for.
+#: The variable that sets the strand count, from a product's development environment or a systemd unit's
+#: drop-in in production. The server reads this one variable and never a product's .env, which holds
+#: settings it has no use for.
 STRANDS_VARIABLE = "EVENTSTREAM_STRANDS"
 
 
@@ -113,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
     # Everything the server imports is imported by now, so either way a GIL that is on here is refused.
     if not free_threaded:
         print("refused: the event stream server must run free-threaded, with the GIL off "
-              "(build its interpreter: uv venv --python 3.14t backend/.venv-eventstream)",
+              "(build its interpreter: uv venv --python 3.14t .venv-3.14t)",
               file=sys.stderr, flush=True)
         return 2
 

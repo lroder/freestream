@@ -51,7 +51,7 @@ def _strands_it_ran(monkeypatch, tmp_path, *arguments):
 
 
 def test_the_strand_count_comes_from_the_environment(monkeypatch, tmp_path):
-    """Set in backend/.env and carried to the server as one variable: the unit's drop-in in production."""
+    """Set in the environment and carried to the server as one variable: a unit's drop-in in production."""
     monkeypatch.setenv("EVENTSTREAM_STRANDS", "6")
     assert _strands_it_ran(monkeypatch, tmp_path) == (0, 6)
 

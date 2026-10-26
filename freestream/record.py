@@ -3,7 +3,7 @@
 Shaped after Kafka's record rather than invented: offset, timestamp, key, value, headers. That is not
 imitation for its own sake — it is how the semantics stay OUTSIDE this repo. A format of my own would
 mean the meaning of a record lived in prose I wrote, which is the arrangement that failed on
-2026-09-22. See `docs/design/document-read-as-an-event-stream.md`.
+2026-09-22.
 
     offset(8) | crc32(4) | timestamp_ns(8) | key_len(4) | value_len(4) | headers_len(4)
     | key | value | headers

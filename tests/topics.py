@@ -2,8 +2,8 @@
 from freestream.interface.channel import Channel, Delivery
 from freestream.server import EventStreamServer
 
-#: The three topics the tests define when they name none: the shapes bosstax-web's document pipeline runs
-#: on, where FreeStream was built — a wide competing topic, a keyed one, and a narrow competing one.
+#: The three topics the tests define when they name none: the shapes of the document pipeline FreeStream
+#: was built for — a wide competing topic, a keyed one, and a narrow competing one.
 SAMPLE_CHANNELS = (
     Channel("pages.to_read", Delivery.COMPETING, partitions=64),
     Channel("page.reads", Delivery.KEYED, partitions=8),

@@ -1,4 +1,4 @@
-"""The invariants from `docs/design/document-read-as-an-event-stream.md`, as tests.
+"""The invariants FreeStream was designed around, as tests.
 
 ★ WHY THIS FILE EXISTS. We settled the design in conversation on 2026-09-22 and I contradicted it
 twice within the hour — once by reaching into a message for a grouping key the producer was supposed to
@@ -6,24 +6,19 @@ supply, and then by writing a confident comment explaining why that was right. P
 police prose I author. A test can.
 
 This is a reflexion model in the sense Murphy, Notkin and Sullivan meant: the intended architecture is
-stated somewhere other than the code, and something mechanical reports where the code diverges. We
-already run one for imports (`lint-imports`, four contracts, in CI). Those contracts are import-shaped
-and every invariant that broke today was not, which is the gap this closes.
+stated somewhere other than the code, and something mechanical reports where the code diverges. An
+import linter can hold the import-shaped rules; every invariant that broke that day was not import-shaped,
+which is the gap this closes.
 
 ONE TEST PER NUMBERED INVARIANT, named for it. A test here failing means the CODE is wrong, or the
-design changed and the document has not — and in the second case the document is updated first, by
-me, not quietly by whoever is mid-keystroke.
+design changed — and in the second case the design is restated first, not quietly changed by whoever is
+mid-keystroke.
 
 They were first written against the work queue's port, and the event stream replaced that transport
 on 2026-09-24; the invariants did not change, so the tests were aimed at what now carries them.
 
-NOT YET COVERED, and deliberately listed rather than silently absent:
-  · #4 events for eyes, queries for decisions — the assembler's completion is a count the head fixed,
-    tested in test_pipeline_document_assembler.py; the database side waits on the realdb tier
-  · #5 the carve is idempotent and emits only on a genuine insert — the constraint landed (firm/076);
-    proving it end to end needs Postgres, which the realdb tier will provide
-  · #7 no orchestrator awaits the stream — the API publishes and lets go (test_documents_reading.py);
-    the assembler is the only stage that waits, and it waits on its own documents only
+Invariants 4, 5 and 7 are about the product built on the stream, not the stream, so they are tested
+there and not here.
 """
 import ast
 import inspect
@@ -126,13 +121,13 @@ def test_invariant_2_the_producer_chooses_the_key_not_the_transport(tmp_path):
 def test_invariant_2_the_event_stream_never_reads_an_identifier_out_of_a_message():
     """Structural, because how it behaves alone would not catch a transport using the key AND the id.
 
-    `app.pipeline` is deliberately NOT checked: the stream head choosing a document id as its key is the
+    A product's pipeline is deliberately NOT checked: the stream head choosing a document id as its key is the
     producer doing exactly what this invariant reserves to it.
     """
     for module in (admin, server, channel, client, consumer, consumer_group, partition_log, record,
                    registry, status, stream_interface, topic, transport, web):
         code = _without_docstrings(inspect.getsource(module))
-        for pipeline_field in ("subject_id", "document_id", "client_id", "firm_id"):
+        for pipeline_field in ("subject_id", "document_id", "client_id", "tenant_id"):
             assert pipeline_field not in code, (
                 f"{module.__name__} reads {pipeline_field!r} — the key is the producer's to choose")
 
@@ -161,7 +156,7 @@ async def test_invariant_3_a_record_that_breaks_its_channel_is_refused_not_degra
 def test_invariant_6_the_log_does_not_fsync_every_record():
     """Durable means surviving a PROCESS, not a power cut (2026-09-22).
 
-    A record the log loses to a power cut is a page of a document that is itself stored in Postgres, so
+    A record the log loses to a power cut is a page of a document that is itself stored in a database, so
     a re-read regenerates it — and an fsync per record would slow the common path to insure against the
     rarer failure. Stated as a test because the tempting "fix" for a flake is to add one, and the cost
     would not show up in any suite.

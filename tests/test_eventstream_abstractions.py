@@ -3,8 +3,6 @@
 These tests drive a REAL event stream server on a REAL socket, because that is what a caller talks to.
 A test that drove the store directly would check a shape nobody uses, and would miss the whole reason
 the server exists, which is that producers do not touch the log.
-
-See `docs/design/document-read-as-an-event-stream.md`.
 """
 import asyncio
 

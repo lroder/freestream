@@ -14,8 +14,7 @@ and a stage never does.
 holds a key until it closes it, a handler's outputs go with its commit as one COMPLETE, a resend is
 recognized by its producer id and sequence, a record started `max_attempts` times is dead-lettered and
 closed out, and a record whose handler raised `RetryLater` waits on its channel's retry topic, which the
-server hands out only once each record is due. See docs/design/document-read-as-an-event-stream.md for
-how each one is held.
+server hands out only once each record is due.
 """
 from __future__ import annotations
 

@@ -10,10 +10,10 @@
 the stream, so moving to another queue is invisible to it. Which transport runs is the scheme of one
 address, `freestream:///var/lib/freestream/eventstream.sock` today and `nats://host:4222` the day a NATS
 transport is written, the way a database URL names its driver. A new transport is one class and one line
-in `TRANSPORTS`. bosstax-web, where FreeStream was built, keeps the rule with an import contract that
-forbids its pipeline from importing any transport; until 2026-10-12 its stages imported FreeStream's own
-client, consumer and record types, and moving to another queue would have meant rewriting five modules
-rather than adding a class.
+in `TRANSPORTS`. A product can keep the rule with an import contract that forbids its pipeline from
+importing any transport; where FreeStream was built, until 2026-10-12 the stages imported FreeStream's
+own client, consumer and record types, and moving to another queue would have meant rewriting five
+modules rather than adding a class.
 
 ★ THE GUARANTEES ARE THE INTERFACE, AND THE SIGNATURES ARE THE SMALL PART OF IT. Every queue offers
 `produce` and something that hands out records. What differs, and what a product is written against, is
@@ -21,7 +21,7 @@ what the queue promises about them: whether one consumer holds a key, whether a 
 with the commit of its input, whether a resend is written twice, whether a record that always fails stops
 being tried. A transport states which of those it keeps (`Guarantee`), the product states which it needs,
 and `open_transport` refuses a transport that lacks one: a transport that spread one document over three
-consumers assembling it would not make bosstax-web's pipeline slower, it would make it wrong.
+consumers assembling it would not make a document pipeline slower, it would make it wrong.
 
 ★ THE RETRY LOOP BELONGS TO THE TRANSPORT. NATS counts deliveries and dead-letters on its own
 (MaxDeliver, then a term), Kafka's share groups count acquisitions, and FreeStream counts starts on its
@@ -30,11 +30,11 @@ own way, rather than one loop above every transport driving the calls of one of 
 
 ★ A HANDLER MAY ASK TO BE TRIED AGAIN LATER (2026-10-12). A handler that raises `RetryLater(delay)` has
 its record handed to its group again no sooner than `delay` from now, and the records behind it are not
-held up while it waits. clarifile asked for it for webhook deliveries to a firm's own endpoint, which can
-be down for hours: it backs off from thirty seconds to six hours over about twelve attempts, and one
-firm's dead endpoint must never delay another firm's deliveries. A registration opts in
-(`delayed_retry=True`) and sets its own `max_attempts`; a plain raise is retried at once, as before. The
-bosstax-web's pipeline neither raises it nor requires `DELAYED_RETRY`. NATS keeps the promise with
+held up while it waits. It was built for webhook deliveries to a customer's own endpoint, which can be
+down for hours: they back off from thirty seconds to six hours over about twelve attempts, and one
+customer's dead endpoint must never delay another customer's deliveries. A registration opts in
+(`delayed_retry=True`) and sets its own `max_attempts`; a plain raise is retried at once, as before. A
+product that never raises it need not require `DELAYED_RETRY`. NATS keeps the promise with
 `NakWithDelay`, and FreeStream with a retry topic whose records it hands out only once they are due
 (`freestream/consumer_group.py`).
 """

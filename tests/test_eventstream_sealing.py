@@ -16,7 +16,7 @@ from freestream.partition_log import PartitionLog
 from freestream.record import CorruptRecordError, Record
 from freestream.sealing import Seal, UnopenableError, load_key, new_key_file
 
-PLAINTEXT = b"Form 1040 page 3 for a fabricated taxpayer, 123-45-6789"
+PLAINTEXT = b"page 3 of a fabricated document, account 0000-1234-5678"
 
 
 def test_a_sealed_segment_holds_no_plaintext_and_reads_back_whole(tmp_path):

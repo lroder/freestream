@@ -26,7 +26,7 @@ from freestream.server import EventStreamServer
 from freestream.transport import FreeStreamAddressError, FreeStreamTransport, socket_paths
 from tests.topics import define
 
-#: A keyed channel, and the guarantees bosstax-web's pipeline requires, which FreeStream was built to keep.
+#: A keyed channel, and the guarantees a document pipeline requires, which FreeStream was built to keep.
 PAGE_READS = Channel("page.reads", Delivery.KEYED, partitions=8)
 REQUIRED_GUARANTEES = frozenset({Guarantee.KEY_AFFINITY, Guarantee.OUTPUTS_WITH_COMMIT,
                                  Guarantee.PRODUCED_ONCE, Guarantee.DEAD_LETTER})
