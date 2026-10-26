@@ -7,11 +7,10 @@ The test checks that the work flows and that the server's resident memory stays 
 tripwire, and it prints the cores the server used, for a CI log to show.
 
 ★ A SYSTEM TEST, RUN ON THE SERVER IT DESCRIBES. Eight load processes against a real server measure the
-machine as much as the code, and the Forgejo runner is not provisioned for that: the same code measured 2.5
+machine as much as the code, and a shared CI runner is not provisioned for that: the same code measured 2.5
 cores on 24 and failed a 1.5 floor there (2026-09-28). So the unit suite leaves it out, and it runs where
-the pipeline runs, with `pytest -m system`. What production needs is also checked at the top of
-deploy/deploy.sh, which refuses a box without the cores its pipeline is configured for, and the interpreter
-being free-threaded is checked by CI's own step.
+the pipeline runs, with `pytest -m system`. A product's deploy step can refuse a box without the
+cores its pipeline is configured for, and the interpreter being free-threaded is checked by CI's own step.
 """
 from __future__ import annotations
 

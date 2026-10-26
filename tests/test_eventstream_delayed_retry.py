@@ -1,6 +1,6 @@
 """A handler asks to be tried again later, and nothing waits behind it meanwhile (#450, 2026-10-12).
 
-clarifile's webhook deliveries go to a firm's own endpoint, which can be down for hours. The handler
+Webhook deliveries go to a customer's own endpoint, which can be down for hours. The handler
 raises `RetryLater(delay)`; the record waits on its channel's retry topic and is handed back no sooner
 than the delay, the records behind it go on being handled, and the attempt limit spans every hop. These
 tests drive a real server on a real socket, as the rest of FreeStream's tests do, with delays of a
@@ -177,7 +177,7 @@ async def test_a_record_that_asks_to_wait_is_not_run_again_before_its_delay(stre
 
 
 async def test_a_waiting_record_holds_up_nothing_behind_it(stream):
-    """★ ONE FIRM'S DEAD ENDPOINT MUST NEVER DELAY ANOTHER'S. Keyed alike, so both share a partition."""
+    """★ ONE CUSTOMER'S DEAD ENDPOINT MUST NEVER DELAY ANOTHER'S. Keyed alike, so both share a partition."""
     handled: list[bytes] = []
 
     async def deliver(record):

@@ -13,7 +13,7 @@ topic is defined once, its definition lives with its data, and a consumer that a
 producer comes online and waits, because the topic is known to exist.
 
 Definitions come from two places, and both end here: the deploy step that ensures the topics the code
-declares (`EventStreamTransport.define`, which bosstax-web runs on every deploy), and an operator on the
+declares (`EventStreamTransport.define`, which a product runs on every deploy), and an operator on the
 server's web page or console.
 
 ★ A NAME BECOMES A DIRECTORY, so it is checked before it is used. Until this existed a topic name from

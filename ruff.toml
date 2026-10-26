@@ -1,9 +1,6 @@
 target-version = "py312"
-# The house measure, held by hand until now and therefore drifting: 242 lines had passed 110 characters
-# because `E501` was ignored on the promise that a formatter handled it, and no formatter was ever run.
-# It is enforced here instead, and `ruff format` is deliberately NOT part of CI: the formatting in this
-# codebase is hand-laid and carries meaning — SQL broken at clause boundaries, arguments grouped by what
-# they are — and surrendering that to a tool to win a lint rule would trade the craft for the measure.
+# Enforced by the linter, and `ruff format` is deliberately NOT part of CI: the formatting here is laid out
+# by hand, arguments grouped by what they are, and handing that to a tool would lose it.
 line-length = 110
 
 [lint]
@@ -20,116 +17,71 @@ select = [
     "SIM",  # flake8-simplify
     "RET",  # flake8-return
     "ARG",  # unused arguments — a parameter nobody reads is a lie about the interface
-    "ERA",  # commented-out code. ZERO today, and the point of the rule is that it stays zero
+    "ERA",  # commented-out code
     "PTH",  # pathlib over os.path
     "TRY",  # tryceratops
     "PL",   # pylint (the arg/branch/statement ceilings)
     "D",    # pydocstyle — SHAPE only; see the ignores
     "RUF",  # ruff's own, incl. RUF100: a `noqa` that stopped being needed is an ERROR
-    "BLE",  # blind `except Exception`. Turned on because 18 `# noqa: BLE001` markers were already in
-            # the tree: past-us kept annotating for a rule nobody had enabled, which is a written
-            # request for it. Now those markers mean something and a NEW blind catch must justify itself.
-    "S",    # bandit. This system holds real tax PII, so the security family is not optional. Turning it
-            # on found exactly one defect (a SQL-identifier tripwire written as `assert`, which `python -O`
-            # deletes) and nothing else — which is the argument for leaving it on rather than for the sweep.
+    "BLE",  # blind `except Exception`: a new blind catch must justify itself with a `noqa`
+    "S",    # bandit. The server seals what it holds, so the security family is not optional
 ]
 ignore = [
     # ---- deliberate patterns, not drift -------------------------------------------------------------
-    "B008",     # function call in a default argument — FastAPI's Depends() is spelled this way
-    "ANN401",   # `Any` as an annotation — asyncpg's fetchval genuinely returns Any
-    "PLC0415",  # import inside a function — how `config` reaches `throttle` without a circular import
-    "PLW0603",  # `global` — the lazy module singletons (pool, presence registry, caches), built once
-    "TRY003",   # a long message to a raise — HTTPException's `detail` IS the sentence a user reads;
-                # a custom class per message would add types without adding clarity
-    # ---- rules that would fight the house voice or the house judgment -------------------------------
-    "D401",     # non-imperative mood. Our docstrings STATE WHAT A THING IS ("The vault: who may reach
-                # whose federal tax information") because that reads better than "Reach the vault".
-                # 323 of them, and the mood is the voice, not an accident.
-    "PLR2004",  # magic value in a comparison. High signal on a domain threshold, noise on `len(x) == 2`
-                # — 53 of its 108 hits are 2 and 3, where naming the number reads WORSE. Run it as an
-                # instrument (`ruff check --select PLR2004`) when auditing thresholds; a gate we would
-                # habitually `noqa` past teaches people to stop reading `noqa`s, which costs more.
+    "B008",     # function call in a default argument
+    "ANN401",   # `Any` as an annotation, where a value genuinely is any
+    "PLC0415",  # import inside a function, to break an import cycle
+    "PLW0603",  # `global`, for lazy module singletons built once
+    "TRY003",   # a long message to a raise — the message is the sentence a reader sees
+    # ---- rules that would fight the house voice -----------------------------------------------------
+    "D401",     # non-imperative mood. Docstrings here STATE WHAT A THING IS, and the mood is the voice
+    "PLR2004",  # magic value in a comparison. Signal on a domain threshold, noise on `len(x) == 2`; run it
+                # as an instrument (`ruff check --select PLR2004`) when auditing thresholds
     "RUF001", "RUF002", "RUF003",  # "ambiguous" unicode — we use — · ★ ⚠ → on purpose, everywhere
-    # ---- bandit findings that are the architecture, not a hole ---------------------------------------
-    "S608",     # "hardcoded SQL expression". 73 hits, all of them the scope predicate and its kin, where
-                # what is interpolated is a PLACEHOLDER NUMBER (`${n}`) or a table alias and never a
-                # value. The guard that actually holds this is structural, not textual: the role matrix
-                # counts every `$n` against the arguments passed (tests/test_document_verb_permissions.py)
-                # and `db/prepare`-style probes type-check the statements against the real schema. A rule
-                # we would `noqa` 73 times teaches people to stop reading `noqa`s.
-    "S105",     # "possible hardcoded password". All four are false: a variable named `token` compared to
-                # a word, a form-number constant, and `app_secret_key = "change-me"` — which is a DEV
-                # default that `config.require_production_secrets` refuses to start production on.
-    "S108",     # "insecure temp file" — `/dev/shm/claritax-*` are the shared-memory ring bus and presence
-                # registry, chosen deliberately (ADR: systems IPC over a broker), not scratch files.
+    # ---- bandit findings that are false here --------------------------------------------------------
+    "S608",     # "hardcoded SQL expression" — there is no SQL; it misreads strings that look like it
+    "S105",     # "possible hardcoded password" — a variable named `token` compared to a word
+    "S108",     # "insecure temp file" — paths under /dev/shm and /tmp chosen deliberately
     # ---- a docstring exists because there is something to say ---------------------------------------
-    # D100-D107 mandate one on every module, class, method and __init__. Enabling them would have
-    # manufactured 106 docstrings that restate their own function name, which is the filler this
-    # codebase is trying to have less of (2026-09-19: reasoning at the top of a functional unit,
-    # short notes through the body, big blocks only where something specific warrants it). The SHAPE
-    # rules below stay on, so the docstrings we DO write are all shaped alike.
+    # D100-D107 would mandate one on every module, class, method and __init__, and manufacture docstrings
+    # that restate their own function's name. The SHAPE rules below stay on, so the docstrings we DO
+    # write are all shaped alike.
     "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
-    # Two of pydocstyle's rules contradict two others by design; ruff warns and picks one. Naming the
-    # loser here means the build is quiet and the choice is ours: no blank line before a class docstring
-    # (D211 over D203), and the summary on the FIRST line of a multi-line docstring (D212 over D213) —
-    # which is the shape the rest of this codebase already uses.
+    # Two of pydocstyle's rules contradict two others by design; naming the loser keeps the build quiet:
+    # no blank line before a class docstring (D211 over D203), and the summary on the FIRST line of a
+    # multi-line docstring (D212 over D213).
     "D203", "D213",
-    # ---- two D rules that fight prose this codebase gets RIGHT ---------------------------------------
-    "D400",     # "first line should end with a period" — it will not accept a QUESTION MARK, and a
-                # predicate function documented as the question it answers is the best shape there is:
-                # `"""May a `role` do `action`?"""` beats "Whether a role may do an action." Twenty of
-                # ours read that way. D415 stays ON, so a summary must still end in terminal punctuation —
-                # it just may be a question mark.
-    "D404",     # "docstring should not start with This" — aimed at self-reference ("This function
-                # returns…"). Ours are not: "This user's saved view preferences", "This account's
-                # undismissed notices" — the "this" is the USER, which is the subject, not the function.
+    # ---- two D rules that fight prose this codebase gets right --------------------------------------
+    "D400",     # "first line should end with a period" — it will not accept a question mark, and a
+                # predicate documented as the question it answers is a good shape. D415 stays ON, so a
+                # summary must still end in terminal punctuation.
+    "D404",     # "docstring should not start with This" — aimed at "This function returns…", which is
+                # not how "this" is used here.
 ]
 
 [lint.pylint]
-# ⚠ CHOSEN, NOT INHERITED. Pylint's defaults (5 args, 12 branches, 6 returns) are somebody else's taste;
-# these are measured off this codebase — set above where it normally sits and below the outliers, so the
-# ceiling stops something new getting worse without demanding a rewrite in a style pass. They are meant to
-# come DOWN as the decomposition work lands, not to stay here.
+# Measured off this codebase rather than inherited from pylint's defaults: above where code normally sits,
+# so the ceiling stops something new getting worse without demanding a rewrite.
 max-args = 8
-max-branches = 15    # matches the mccabe ratchet, so one number means one thing
-max-statements = 50  # pylint's own default, and it already fits: 8 functions exceed it
-# ★ RAISED FROM 8 TO 14 (2026-09-21) — a RECALIBRATION, not an exception, and the distinction is
-# the whole point. An exception says "this function is exempt"; this says the threshold was measuring the
-# wrong thing, for everyone, permanently.
-#
-# All four functions that tripped it are the same shape: a DISPATCH CHAIN, where each early return is one
-# clean answer and the branch that produced it is two lines long. `sniff` answers pdf/jpeg/png/zip/office/
-# unknown from the leading bytes; `looks_like_title` accepts or rejects a cell on fourteen independent
-# grounds; `_inspect_zip_container` and `_family_of` are the same. Folding them into an accumulator
-# variable to satisfy a count would make every one of them harder to read, which is the opposite of what
-# this file is for.
-#
-# The count measures HOW MANY ANSWERS a dispatch has. It does not measure how tangled the code is — that
-# is what max-complexity and max-branches are for, and all four sit comfortably inside those. 14 is the
-# largest of them, so the ceiling still stops a fifteenth answer arriving without a thought.
+max-branches = 15    # matches the mccabe ceiling, so one number means one thing
+max-statements = 50
+# A dispatch chain, where each early return is one clean answer, trips a low return count without being
+# tangled; max-complexity and max-branches measure tangle.
 max-returns = 14
 
 [lint.mccabe]
-# ⚠ A RATCHET, AND IT TIGHTENS ITSELF. 15 is above the codebase's normal ceiling (only six functions
-# exceeded it) and below the outliers, so it stops a new tangle landing without demanding that a style
-# pass rewrite the W-2 reader. Each exception carries an explicit `# noqa: C901` naming its number and
-# its card — and RUF100 turns that marker into an ERROR the moment the function is simple enough not to
-# need it, so the debt cannot quietly outlive its fix. Drop this toward 10 as those land.
+# A ratchet: each exception carries an explicit `# noqa: C901`, and RUF100 turns that marker into an
+# ERROR the moment the function is simple enough not to need it.
 max-complexity = 15
 
 [lint.per-file-ignores]
 # Return-type annotations on test functions and fixtures are ceremony: pytest discovers a test by name
-# and everything returns None. NAMING (N) still applies — a test's variables should be as legible as any
-# other code. Docstring SHAPE does not: a test's docstring is often a full sentence about the scenario,
-# and ARG/PLR ceilings fight the long, deliberately explicit fixtures.
-# A test of a login must hold a literal password — that IS the test — and a serialization round-trip
-# must call pickle.loads on what it just dumped. Bandit cannot tell a fixture from a leak; the app tree
-# stays fully covered, and it found no hardcoded secret there.
-# S603 — a test that spawns a subprocess is spawning `sys.executable` with a string literal from
-# the test file itself. One test genuinely needs it: the partitioner must map a key the same way
-# in a DIFFERENT interpreter, and Python's built-in hash is seeded per process, so proving the
-# mapping is stable can only be done from a second process. There is no untrusted input anywhere
-# near it.
+# and everything returns None. Naming (N) still applies. Docstring shape does not: a test's docstring is
+# often a full sentence about the scenario, and ARG/PLR ceilings fight long, explicit fixtures.
+# Bandit cannot tell a fixture from a leak, so a test may hold a literal secret and unpickle what it just
+# pickled. S603: one test spawns `sys.executable` with a literal from the test itself, because the
+# partitioner must map a key the same way in a DIFFERENT interpreter, and Python's built-in hash is
+# seeded per process.
 "tests/**" = ["ANN", "D", "ARG", "PLR0913", "PLR2004", "S101", "S105", "S106", "S107", "S301",
               "S603"]
 
