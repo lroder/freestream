@@ -82,6 +82,11 @@ uv venv --python 3.14t .venv-3.14t && uv pip install --python .venv-3.14t/bin/py
 .venv/bin/python -m pytest -m system      # measures the server's multithreading on this machine
 ```
 
+## Design
+
+[docs/design.md](docs/design.md) sets out why FreeStream exists, the decisions behind it, and the
+measurements behind each of them.
+
 ## Contributing
 
 Development happens in a private repository, and https://github.com/lroder/freestream is a mirror of it.
