@@ -48,7 +48,7 @@ await transport.run(stop=stop)
 
 ```sh
 uv venv --python 3.14t .venv-3.14t
-uv pip install --python .venv-3.14t/bin/python "freestream @ git+https://github.com/lroder/freestream.git@v1.0.1"
+uv pip install --python .venv-3.14t/bin/python "freestream @ git+https://github.com/lroder/freestream.git@v1.0.2"
 .venv-3.14t/bin/python -m freestream.sealing /var/lib/freestream/eventstream.key   # once
 .venv-3.14t/bin/python -m freestream --socket /var/lib/freestream/eventstream.sock \
     --root /var/lib/freestream/eventstream --key-file /var/lib/freestream/eventstream.key \
@@ -68,7 +68,7 @@ release branch, so no fix exists only on an old version. Pin a tag, never a bran
 file that installs FreeStream, and take a fix by moving the pin:
 
 ```
-freestream @ git+https://github.com/lroder/freestream.git@v1.0.1
+freestream @ git+https://github.com/lroder/freestream.git@v1.0.2
 ```
 
 The name `freestream` on PyPI belongs to an unrelated project, so FreeStream installs from this repository.

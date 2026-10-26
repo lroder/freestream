@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "freestream"
-version = "1.0.1"
+version = "1.0.2"
 description = "A partitioned, sealed event stream server for free-threaded Python, and the transport interface products reach it through"
 readme = "README.md"
 requires-python = ">=3.12"
