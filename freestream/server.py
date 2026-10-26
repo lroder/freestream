@@ -55,7 +55,7 @@ log = logging.getLogger(__name__)
 
 #: How many strands a server runs when it is not told. Each is a thread, and the work spreads over them
 #: by partition, so more than the cores the server may use gains nothing; four keeps a small footprint
-#: beside Postgres and the page readers on a shared box. Never fewer than two, so the server is
+#: beside a database and other workers on a shared box. Never fewer than two, so the server is
 #: multithreaded wherever it runs. `EVENTSTREAM_STRANDS` or `--strands` sets it (`__main__.py`).
 DEFAULT_STRANDS = max(2, min(4, len(os.sched_getaffinity(0))))
 

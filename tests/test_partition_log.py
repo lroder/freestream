@@ -1,6 +1,6 @@
 """The record format and the append-only log (#450).
 
-Storage taken from Kafka's model on purpose — see `docs/design/document-read-as-an-event-stream.md`.
+Storage taken from Kafka's model on purpose.
 The tests that matter here are the ones about a log's TAIL: a reader catching up with a writer, and a
 partial write. A log that cannot tell "the end of what is written" from "a damaged record" will read
 garbage off the end of a partial append and hand it to a consumer as real work.

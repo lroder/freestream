@@ -4,8 +4,6 @@
 "every page of a document reaches one aggregator" is what partitioning already does — PROVIDED one key
 always maps to one partition. The moment it does not, two consumers are assembling one document, which
 is 2026-09-22 again by a different road.
-
-See `docs/design/document-read-as-an-event-stream.md`.
 """
 import ast
 import os

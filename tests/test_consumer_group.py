@@ -3,8 +3,6 @@
 These two facts together are what 2026-09-22 lacked. One owner means one consumer assembles a
 document, because its key picks its partition. An offset means a replacement resumes where the dead one
 stopped, with no retention policy for anyone to maintain.
-
-See `docs/design/document-read-as-an-event-stream.md`.
 """
 import subprocess
 import sys
