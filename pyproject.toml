@@ -36,6 +36,9 @@ freestream = ["console.html", "py.typed"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Each async fixture lives for one test. pytest-asyncio warns while this is unset, and filterwarnings turns the
+# warning into an error from pytest 9.2 on.
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 # System tests measure the machine they run on (a real server under load from several processes), so the
 # unit suite leaves them out. Run them on a target server: pytest -m system
