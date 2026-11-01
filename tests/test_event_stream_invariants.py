@@ -151,16 +151,20 @@ async def test_invariant_3_a_record_that_breaks_its_channel_is_refused_not_degra
                                                                     key=key)
 
 
-# --------------------------------------------------------------- 6. durable means surviving a process
+# --------------------------------------------------------------- 6. durable means surviving a power cut
 
-def test_invariant_6_the_log_does_not_fsync_every_record():
-    """Durable means surviving a PROCESS, not a power cut (2026-09-22).
+def test_invariant_6_the_log_marks_its_writes_and_the_strand_flushes_them_together():
+    """Durable means surviving a power cut, and the server answers for a write only once it is on the disk
+    (2026-09-26, `docs/design.md` → *Durability through a power cut*).
 
-    A record the log loses to a power cut is a page of a document that is itself stored in a database, so
-    a re-read regenerates it — and an fsync per record would slow the common path to insure against the
-    rarer failure. Stated as a test because the tempting "fix" for a flake is to add one, and the cost
-    would not show up in any suite.
+    The log never fsyncs a record itself. It marks the file it wrote, and the directory when it made a
+    segment, with `durability.mark_written`, and the strand's `Durability` flushes everything marked in a
+    batch together from a pool of threads, so many answers share one journal commit. An fsync inside the
+    log would put one commit back on every record, about 6.5 ms on the development box, and the cost would
+    show in no suite, so this test reads the log's source for both halves.
     """
-    source = inspect.getsource(partition_log)
-    assert "fsync" not in _without_docstrings(source), (
-        "see invariant 6 — this is a deliberate trade, not an oversight")
+    source = _without_docstrings(inspect.getsource(partition_log))
+    assert "fsync" not in source, (
+        "see invariant 6: the log marks its writes, and durability.py flushes a batch of them together")
+    assert "mark_written(" in source, (
+        "see invariant 6: a write the log does not mark is never flushed, so a power cut can take it")
